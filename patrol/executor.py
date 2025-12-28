@@ -22,6 +22,7 @@ from phone_agent.device_factory import get_device_factory
 from patrol.models import PatrolConfig, TaskConfig
 from patrol.utils.screenshot import ScreenshotManager
 from patrol.utils.logger import get_logger
+from patrol.notifications import NotificationManager
 
 
 class GracefulExit:
@@ -94,6 +95,11 @@ class PatrolExecutor:
         self.graceful_exit = GracefulExit()
         signal.signal(signal.SIGINT, self.graceful_exit.signal_handler)
 
+        # 初始化通知管理器
+        self.notification_manager = NotificationManager(
+            patrol_config.notifications.__dict__
+        )
+
     def execute(self) -> dict[str, Any]:
         """
         执行巡查（路由到单次或定时巡查）
@@ -143,6 +149,10 @@ class PatrolExecutor:
             # 执行单次巡查
             result = self._execute_single_patrol()
             all_results.append(result)
+
+            # 发送失败通知（定时巡查中也在每次巡查后发送）
+            # 注意：_execute_single_patrol() 内部已经发送了通知
+            # 这里不需要再次发送，避免重复通知
 
             # 检查是否收到停止信号
             if self.graceful_exit.exit:
@@ -250,6 +260,17 @@ class PatrolExecutor:
         # Parse exploration results if auto_patrol was used
         if self.patrol_config.auto_patrol.enabled:
             results = self._parse_exploration_results(results)
+
+        # 发送失败通知（如果配置了且有失败）
+        if self.notification_manager.has_enabled_notifiers():
+            try:
+                self.notification_manager.send_failure_notification(
+                    patrol_name=self.patrol_config.name,
+                    results=results,
+                )
+            except Exception as e:
+                self.logger.error(f"发送通知失败: {e}")
+                # 通知失败不影响巡查结果
 
         return results
 

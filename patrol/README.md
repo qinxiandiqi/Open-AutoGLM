@@ -11,7 +11,9 @@ Patrol 是 Open-AutoGLM 的应用巡查系统，通过配置驱动的方式自�
 - [使用示例](#使用示例)
 - [配置优先级](#配置优先级)
 - [最佳实践](#最佳实践)
+- [常见问题](#常见问题)
 - [架构说明](#架构说明)
+- [贡献指南](#贡献指南)
 
 ## 快速开始
 
@@ -343,6 +345,71 @@ patrol --config patrol/configs/jinritoutiao_scheduled_patrol.yaml
 - ✅ 手动停止（Ctrl+C）
 - ✅ 生成汇总报告，包含总执行次数、成功率等统计信息
 
+#### notifications 配置（通知）
+
+notifications 用于配置巡查失败时的通知方式，支持飞书自定义机器人通知。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| lark.enabled | boolean | false | 是否启用飞书通知 |
+| lark.webhook_url | string | null | 飞书 Webhook URL |
+| lark.mention_users | array | [] | @的用户 open_id 列表 |
+
+**notifications 示例**:
+
+```yaml
+name: "今日头条首页巡查"
+description: "验证今日头条首页的核心功能是否正常"
+
+# 通知配置
+notifications:
+  lark:
+    enabled: true
+    webhook_url: "${FEISHU_WEBHOOK_URL}"  # 从环境变量读取
+    mention_users:  # 可选：@的用户列表
+      - "ou_xxx"
+      - "ou_yyy"
+
+# 巡查任务
+tasks:
+  - name: "启动今日头条"
+    task: "打开今日头条"
+    success_criteria: "今日头条应用已打开，显示首页界面"
+```
+
+**获取飞书 Webhook URL**:
+1. 在飞书群组中添加自定义机器人
+2. 选择"自定义机器人"并创建
+3. 复制 Webhook URL（格式：`https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx`）
+4. 配置到 YAML 文件或环境变量
+
+**获取用户 open_id**:
+- 方法一：通过飞书开放平台 API 查询（[文档](https://open.feishu.cn/document/server-docs/user-management/get-user-info)）
+- 方法二：在飞书管理后台的用户管理中查看
+
+**通知消息格式**:
+当巡查失败时，飞书机器人会发送富文本消息，包含：
+- 🚨 失败警告标题
+- 巡查概览信息（名称、总任务数、通过数、失败数）
+- 失败任务详情（任务名称、错误信息）
+- @提醒指定用户（如果配置）
+
+**使用方式**:
+```bash
+# 配置环境变量
+export FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx"
+
+# 执行巡查
+patrol --config patrol/configs/jinritoutiao_with_notification.yaml
+
+# 当有任务失败时，会自动发送飞书通知
+```
+
+**错误处理**:
+- 如果 webhook_url 未配置，会记录警告并自动禁用通知
+- 通知发送失败不会影响巡查执行
+- 所有通知错误都会记录到日志中
+
 ## 使用示例
 
 ### 示例 1：微信巡查
@@ -558,6 +625,7 @@ patrol/configs/
 │  - 配置管理 (loader, converter)     │
 │  - 任务编排 (executor)              │
 │  - 报告生成 (reporter)              │
+│  - 通知系统 (notifications)         │
 └─────────────────────────────────────┘
                    │
                    ▼
@@ -577,6 +645,7 @@ patrol/configs/
 | 配置转换 | config/converter.py | YAML → Dataclass |
 | 执行器 | executor.py | 巡查任务执行 |
 | 报告器 | reporter.py | 生成巡查报告 |
+| 通知系统 | notifications/ | 失败通知发送 |
 | 模型 | models.py | 配置数据模型 |
 
 ### 设计原则
@@ -585,6 +654,7 @@ patrol/configs/
 2. **环境变量降级**：只在 YAML 未指定时才使用环境变量
 3. **配置即代码**：巡查任务定义在 YAML 中，可版本控制和审查
 4. **极简 CLI**：只保留 `--config` 和 `--list-examples` 两个参数
+5. **通知隔离**：通知失败不影响巡查执行，保证系统稳定性
 
 ## CLI 参数
 

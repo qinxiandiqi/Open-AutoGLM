@@ -7,6 +7,15 @@ model:
   model_name: "autoglm-phone"
   # api_key: "${ZHIPU_API_KEY}"  # 从环境变量读取
 
+# 通知配置（巡查失败时发送飞书通知）
+notifications:
+  lark:
+    enabled: true  # 启用飞书通知
+    webhook_url: "${FEISHU_WEBHOOK_URL}"  # 从环境变量读取飞书 Webhook URL
+    mention_users:  # 可选：@提醒的用户 open_id 列表
+      # - "ou_xxx"  # 示例用户 open_id，替换为实际值
+      # - "ou_yyy"
+
 # 定时巡查配置
 scheduled_patrol:
   enabled: true

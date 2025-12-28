@@ -20,6 +20,8 @@ from patrol.models import (
     AutoPatrolConfig,
     ExplorationStrategy,
     ScheduledPatrolConfig,
+    NotificationConfig,
+    LarkNotificationConfig,
 )
 
 
@@ -47,6 +49,9 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
 
     # 转换 scheduled_patrol 配置
     scheduled_patrol_config = yaml_to_scheduled_patrol_config(yaml_data)
+
+    # 转换通知配置
+    notifications_config = yaml_to_notification_config(yaml_data)
 
     # 转换执行配置
     execution = yaml_data.get("execution", {})
@@ -80,6 +85,8 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
         screenshot_dir=output.get("screenshot_dir", "patrol_screenshots"),
         report_dir=output.get("report_dir", "patrol_reports"),
         verbose=output.get("verbose", True),
+        # 通知配置
+        notifications=notifications_config,  # 新增
     )
 
     return config
@@ -360,4 +367,33 @@ def yaml_to_scheduled_patrol_config(yaml_data: dict[str, Any]) -> ScheduledPatro
         success_interval=scheduled_patrol_yaml.get("success_interval", 300),
         failure_interval=scheduled_patrol_yaml.get("failure_interval", 300),
         max_runs=scheduled_patrol_yaml.get("max_runs"),
+    )
+
+
+def yaml_to_notification_config(yaml_data: dict[str, Any]) -> NotificationConfig:
+    """
+    将 YAML 数据转换为 NotificationConfig
+
+    Args:
+        yaml_data: 解析后的 YAML 数据
+
+    Returns:
+        NotificationConfig 对象
+    """
+    notifications_yaml = yaml_data.get("notifications", {})
+
+    # 转换飞书通知配置
+    lark_yaml = notifications_yaml.get("lark", {})
+    lark_config = LarkNotificationConfig(
+        enabled=lark_yaml.get("enabled", False),
+        webhook_url=lark_yaml.get("webhook_url"),
+        mention_users=lark_yaml.get("mention_users", []),
+    )
+
+    # 创建通知配置
+    return NotificationConfig(
+        lark=lark_config,
+        # 未来可以在这里添加其他通知方式
+        # dingtalk=yaml_to_dingtalk_config(notifications_yaml),
+        # wechat=yaml_to_wechat_config(notifications_yaml),
     )

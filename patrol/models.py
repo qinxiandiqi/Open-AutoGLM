@@ -163,6 +163,34 @@ class ScheduledPatrolConfig:
 
 
 @dataclass
+class LarkNotificationConfig:
+    """
+    Configuration for Feishu/Lark notifications.
+
+    Attributes:
+        enabled: Whether Feishu notifications are enabled
+        webhook_url: Feishu custom bot webhook URL
+        mention_users: List of user open_ids to @mention (optional)
+    """
+    enabled: bool = False
+    webhook_url: str | None = None
+    mention_users: list[str] = field(default_factory=list)
+
+
+@dataclass
+class NotificationConfig:
+    """
+    Configuration for all notification channels.
+
+    Attributes:
+        lark: Feishu/Lark notification configuration
+        # Future: dingtalk: DingTalk notification configuration
+        # Future: wechat: WeChat Work notification configuration
+    """
+    lark: LarkNotificationConfig = field(default_factory=LarkNotificationConfig)
+
+
+@dataclass
 class TaskConfig:
     """
     Configuration for a single patrol task.
@@ -216,6 +244,7 @@ class PatrolConfig:
         report_dir: Directory to save reports
         verbose: Whether to enable verbose output
         close_app_after_patrol: Whether to close apps after patrol completes
+        notifications: Notification configuration
     """
 
     name: str
@@ -243,6 +272,9 @@ class PatrolConfig:
 
     # Cleanup configuration
     close_app_after_patrol: bool = True
+
+    # Notification configuration
+    notifications: NotificationConfig = field(default_factory=NotificationConfig)
 
     def __post_init__(self):
         """Validate configuration after initialization."""
