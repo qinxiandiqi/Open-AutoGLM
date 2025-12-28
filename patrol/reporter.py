@@ -153,6 +153,27 @@ class PatrolReporter:
 
             md_lines.extend(["", "---", ""])
 
+        # NEW: Add exploration summary if auto_patrol was used
+        if "exploration_summary" in results:
+            md_lines.extend([
+                "",
+                "## 🔍 自动探索结果",
+                "",
+                f"- **发现页面数**: {results['exploration_summary']['total_pages_discovered']}",
+                f"- **已测试页面**: {results['exploration_summary']['pages_tested']}",
+                f"- **探索完成**: {'是' if results['exploration_summary']['exploration_completed'] else '否'}",
+                "",
+            ])
+
+            # List discovered pages
+            if results.get("discovered_pages"):
+                md_lines.extend(["### 发现的页面", ""])
+                for page in results["discovered_pages"]:
+                    status = "✅ 已测试" if page.get("tested") else "⏭️ 未测试"
+                    test_result = f" ({page.get('test_result', 'N/A')})" if page.get("tested") else ""
+                    md_lines.append(f"- {status} **{page['page_name']}**{test_result}")
+                md_lines.extend(["", "---", ""])
+
         # Write to file
         md_content = "\n".join(md_lines)
         report_path.write_text(md_content, encoding="utf-8")

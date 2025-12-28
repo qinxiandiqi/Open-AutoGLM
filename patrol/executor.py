@@ -141,6 +141,10 @@ class PatrolExecutor:
         results["end_time"] = end_time
         results["total_duration"] = (end_time - start_time).total_seconds()
 
+        # Parse exploration results if auto_patrol was used
+        if self.patrol_config.auto_patrol.enabled:
+            results = self._parse_exploration_results(results)
+
         return results
 
     def _execute_task(self, task_config: TaskConfig) -> dict[str, Any]:
@@ -485,3 +489,88 @@ class PatrolExecutor:
             self.logger.info(f"✅ 已清理 {closed_count} 个应用")
         else:
             self.logger.info("✅ 无需清理应用")
+
+    def _parse_exploration_results(self, results: dict[str, Any]) -> dict[str, Any]:
+        """
+        从 auto_patrol 任务结果中解析探索信息
+
+        Args:
+            results: 原始巡查结果
+
+        Returns:
+            增强后的巡查结果，包含发现的页面信息
+        """
+        # 查找探索任务结果
+        exploration_task = None
+        for task in results.get("tasks", []):
+            if task["name"] == "自动探索应用":
+                exploration_task = task
+                break
+
+        if not exploration_task:
+            return results
+
+        # 从 agent 结果中解析发现的页面
+        agent_result = exploration_task.get("agent_result", "")
+        discovered_pages = self._extract_pages_from_result(agent_result)
+
+        # 添加到结果中
+        results["discovered_pages"] = discovered_pages
+        results["exploration_summary"] = {
+            "total_pages_discovered": len(discovered_pages),
+            "pages_tested": sum(1 for p in discovered_pages if p.get("tested", False)),
+            "exploration_completed": exploration_task["passed"],
+        }
+
+        return results
+
+    def _extract_pages_from_result(self, agent_result: str) -> list[dict]:
+        """
+        从 agent 的结果文本中提取发现的页面信息
+
+        简单的关键词匹配解析器，查找如下模式:
+        - "发现页面：首页"
+        - "测试结果：通过"
+        等
+
+        Args:
+            agent_result: Agent 的结果文本
+
+        Returns:
+            发现的页面列表
+        """
+        pages = []
+        lines = agent_result.split('\n')
+        current_page = None
+
+        for line in lines:
+            line = line.strip()
+
+            # 查找页面发现模式
+            if any(keyword in line for keyword in ["发现页面", "进入页面", "打开页面"]):
+                if current_page and current_page not in pages:
+                    pages.append(current_page)
+                # 提取页面名称
+                for keyword in ["发现页面：", "进入页面：", "打开页面：", "发现页面", "进入页面", "打开页面"]:
+                    if keyword in line:
+                        page_name = line.replace(keyword, "").strip()
+                        current_page = {"page_name": page_name, "tested": False}
+                        break
+
+            # 查找测试结果
+            elif current_page and any(keyword in line for keyword in ["测试通过", "测试成功", "测试完成"]):
+                current_page["tested"] = True
+                current_page["test_result"] = "passed"
+                pages.append(current_page)
+                current_page = None
+
+            elif current_page and any(keyword in line for keyword in ["测试失败", "无法测试"]):
+                current_page["tested"] = True
+                current_page["test_result"] = "failed"
+                pages.append(current_page)
+                current_page = None
+
+        if current_page and current_page not in pages:
+            pages.append(current_page)
+
+        return pages

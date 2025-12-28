@@ -14,6 +14,12 @@ from typing import Any, Callable
 from enum import Enum
 
 
+class ExplorationStrategy(Enum):
+    """Exploration strategy for auto patrol."""
+    BREADTH_FIRST = "breadth_first"  # Explore all main tabs first
+    DEPTH_FIRST = "depth_first"      # Explore each branch completely
+
+
 class ValidationType(Enum):
     """
     Types of validation strategies for patrol tasks.
@@ -75,6 +81,71 @@ class ValidationRule:
 
 
 @dataclass
+class DiscoveredPage:
+    """
+    Represents a page discovered during auto patrol.
+
+    Attributes:
+        page_name: Human-readable page name
+        page_path: Navigation path to reach this page (e.g., "首页 → 推荐 → 视频")
+        depth: Depth level (0 = main page)
+        tested: Whether this page was tested
+        test_results: Test results for this page
+        screenshot_path: Optional screenshot path
+    """
+    page_name: str
+    page_path: str  # e.g., "首页 → 推荐 → 视频"
+    depth: int
+    tested: bool = False
+    test_results: list[dict] = field(default_factory=list)
+    screenshot_path: str | None = None
+
+
+@dataclass
+class AutoPatrolConfig:
+    """
+    Configuration for automatic app exploration and testing.
+
+    Attributes:
+        enabled: Whether auto patrol is enabled
+        target_app: Target app name or package name
+        max_pages: Maximum number of pages to explore
+        max_depth: Maximum navigation depth (0 = current page only)
+        max_time: Maximum exploration time in seconds
+        forbidden_actions: List of actions to avoid (safety constraint)
+        test_actions: Core functionality tests for each page
+        explore_strategy: Exploration strategy (breadth_first/depth_first)
+        save_discovered_pages: Whether to save list of discovered pages
+        screenshot_each_page: Whether to screenshot each page
+    """
+    enabled: bool = False
+    target_app: str | None = None
+
+    # Exploration limits
+    max_pages: int = 20
+    max_depth: int = 3
+    max_time: int = 300  # 5 minutes
+
+    # Safety constraints
+    forbidden_actions: list[str] = field(default_factory=lambda: [
+        "删除", "支付", "购买", "卸载", "清空", "退出登录", "注销"
+    ])
+
+    # Testing actions
+    test_actions: list[str] = field(default_factory=lambda: [
+        "向下滚动查看内容",
+        "向上滚动返回顶部",
+    ])
+
+    # Strategy
+    explore_strategy: ExplorationStrategy = ExplorationStrategy.BREADTH_FIRST
+
+    # Output control
+    save_discovered_pages: bool = True
+    screenshot_each_page: bool = False
+
+
+@dataclass
 class TaskConfig:
     """
     Configuration for a single patrol task.
@@ -118,6 +189,7 @@ class PatrolConfig:
         name: Name of this patrol
         description: Description of what this patrol checks
         tasks: List of tasks to execute
+        auto_patrol: Auto patrol configuration
         device_id: Device ID to use (None for auto-detection)
         lang: Language for UI messages ("cn" or "en")
         continue_on_error: Whether to continue if a task fails
@@ -131,6 +203,9 @@ class PatrolConfig:
     name: str
     description: str
     tasks: list[TaskConfig]
+
+    # Auto patrol configuration
+    auto_patrol: AutoPatrolConfig = field(default_factory=AutoPatrolConfig)
 
     # Execution configuration
     device_id: str | None = None
@@ -153,5 +228,5 @@ class PatrolConfig:
         if self.lang not in ("cn", "en"):
             raise ValueError("lang must be either 'cn' or 'en'")
 
-        if not self.tasks:
-            raise ValueError("At least one task is required")
+        if not self.tasks and not self.auto_patrol.enabled:
+            raise ValueError("At least one task or auto_patrol is required")

@@ -12,7 +12,14 @@ from typing import Any
 
 from phone_agent.model import ModelConfig
 
-from patrol.models import PatrolConfig, TaskConfig, ValidationRule, ValidationType
+from patrol.models import (
+    PatrolConfig,
+    TaskConfig,
+    ValidationRule,
+    ValidationType,
+    AutoPatrolConfig,
+    ExplorationStrategy,
+)
 
 
 def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
@@ -29,10 +36,13 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
         ValueError: 如果缺少必需字段
     """
     # 验证必需字段
-    required_fields = ["name", "description", "tasks"]
+    required_fields = ["name", "description"]
     for field in required_fields:
         if field not in yaml_data:
             raise ValueError(f"缺少必需字段: {field}")
+
+    # 转换 auto_patrol 配置
+    auto_patrol_config = yaml_to_auto_patrol_config(yaml_data)
 
     # 转换执行配置
     execution = yaml_data.get("execution", {})
@@ -40,15 +50,21 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
 
     # 转换任务列表
     tasks = []
-    for task_yaml in yaml_data["tasks"]:
+    for task_yaml in yaml_data.get("tasks", []):
         task = yaml_to_task_config(task_yaml)
         tasks.append(task)
+
+    # 如果启用了 auto_patrol，生成探索任务并插入到任务列表开头
+    if auto_patrol_config.enabled:
+        exploration_task = _generate_exploration_task(auto_patrol_config)
+        tasks.insert(0, exploration_task)
 
     # 创建 PatrolConfig
     config = PatrolConfig(
         name=yaml_data["name"],
         description=yaml_data["description"],
         tasks=tasks,
+        auto_patrol=auto_patrol_config,  # 新增
         # 执行配置
         device_id=execution.get("device_id"),
         lang=execution.get("lang", "cn"),
@@ -221,3 +237,98 @@ def yaml_to_validation_rule(val_yaml: dict[str, Any]) -> ValidationRule:
     )
 
     return rule
+
+
+def yaml_to_auto_patrol_config(yaml_data: dict[str, Any]) -> AutoPatrolConfig:
+    """
+    将 YAML 数据转换为 AutoPatrolConfig
+
+    Args:
+        yaml_data: 解析后的 YAML 数据
+
+    Returns:
+        AutoPatrolConfig 对象
+
+    Raises:
+        ValueError: 如果探索策略不支持
+    """
+    auto_patrol_yaml = yaml_data.get("auto_patrol", {})
+
+    # 如果未启用，返回默认禁用配置
+    if not auto_patrol_yaml.get("enabled", False):
+        return AutoPatrolConfig(enabled=False)
+
+    # 解析探索策略
+    strategy_str = auto_patrol_yaml.get("explore_strategy", "breadth_first")
+    try:
+        explore_strategy = ExplorationStrategy(strategy_str)
+    except ValueError:
+        raise ValueError(f"不支持的探索策略: {strategy_str}")
+
+    return AutoPatrolConfig(
+        enabled=auto_patrol_yaml.get("enabled", True),
+        target_app=auto_patrol_yaml.get("target_app"),
+        max_pages=auto_patrol_yaml.get("max_pages", 20),
+        max_depth=auto_patrol_yaml.get("max_depth", 3),
+        max_time=auto_patrol_yaml.get("max_time", 300),
+        forbidden_actions=auto_patrol_yaml.get("forbidden_actions", [
+            "删除", "支付", "购买", "卸载", "清空", "退出登录"
+        ]),
+        test_actions=auto_patrol_yaml.get("test_actions", [
+            "向下滚动查看内容",
+            "向上滚动返回顶部",
+        ]),
+        explore_strategy=explore_strategy,
+        save_discovered_pages=auto_patrol_yaml.get("save_discovered_pages", True),
+        screenshot_each_page=auto_patrol_yaml.get("screenshot_each_page", False),
+    )
+
+
+def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConfig:
+    """
+    从 AutoPatrolConfig 生成探索任务
+
+    关键:生成一个包含详细探索指令的自然语言任务
+
+    Args:
+        auto_patrol_config: 自动巡查配置
+
+    Returns:
+        TaskConfig 用于探索任务
+    """
+    strategy_text = {
+        ExplorationStrategy.BREADTH_FIRST: "广度优先（先探索所有一级页面，再深入二级页面）",
+        ExplorationStrategy.DEPTH_FIRST: "深度优先（完整探索一个分支后再探索下一个）"
+    }
+
+    task_instruction = f"""请自主探索{auto_patrol_config.target_app}应用，执行以下任务：
+
+1. 探索目标：发现应用的主要页面和功能入口（最多探索{auto_patrol_config.max_pages}个页面）
+2. 探索深度：最多进入{auto_patrol_config.max_depth}级子页面
+3. 安全约束：严禁执行以下操作：{', '.join(auto_patrol_config.forbidden_actions)}
+4. 测试要求：在每个发现的页面测试以下功能：
+{chr(10).join(f'   - {action}' for action in auto_patrol_config.test_actions)}
+5. 探索策略：采用{strategy_text[auto_patrol_config.explore_strategy]}策略
+6. 时间限制：{auto_patrol_config.max_time}秒内完成探索
+
+请开始探索，并在每完成一个页面的测试后简要报告进度。"""
+
+    success_criteria = f"""探索完成的标准：
+- 发现了应用的主要一级页面（底部导航、侧边栏、主要入口）
+- 对每个发现的页面执行了核心功能测试
+- 没有执行任何禁止的操作
+- 在时间和页面数量限制内完成了探索
+
+请总结探索结果，包括：
+1. 发现的页面数量和名称
+2. 每个页面的测试结果（通过/失败）
+3. 发现的问题（如果有）"""
+
+    return TaskConfig(
+        name="自动探索应用",
+        description=f"自主探索{auto_patrol_config.target_app}的所有页面并测试核心功能",
+        task=task_instruction,
+        success_criteria=success_criteria,
+        timeout=auto_patrol_config.max_time,
+        enabled=True,
+    )

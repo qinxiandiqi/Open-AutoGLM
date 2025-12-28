@@ -1,0 +1,64 @@
+name: "今日头条自动巡查"
+description: "自动探索并测试今日头条的所有页面"
+
+# 模型配置
+model:
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
+  model_name: "autoglm-phone"
+  # api_key: "${ZHIPU_API_KEY}"  # 从环境变量读取
+
+# 自动巡查配置
+auto_patrol:
+  enabled: true
+  target_app: "今日头条"
+
+  # 探索限制
+  max_pages: 15
+  max_depth: 2
+  max_time: 180  # 3分钟
+
+  # 安全约束
+  forbidden_actions:
+    - "删除"
+    - "支付"
+    - "购买"
+    - "卸载"
+    - "清空数据"
+    - "退出登录"
+
+  # 每个页面的核心功能测试
+  test_actions:
+    - "向下滚动查看更多内容"
+    - "向上滚动返回顶部"
+    - "检查页面是否有刷新按钮"
+    - "检查页面是否有搜索功能"
+
+  # 探索策略
+  explore_strategy: "breadth_first"  # 先探索所有一级页面
+
+  # 输出控制
+  save_discovered_pages: true
+  screenshot_each_page: false
+
+# 执行配置
+execution:
+  device_id: null
+  lang: "cn"
+  continue_on_error: false
+  close_app_after_patrol: true
+
+# 输出配置
+output:
+  save_screenshots: true
+  screenshot_dir: "patrol_screenshots/jinritoutiao_auto"
+  report_dir: "patrol_reports"
+  verbose: true
+
+# 可选:在自动巡查后添加手动任务
+tasks:
+  - name: "手动验证视频播放"
+    description: "额外手动验证视频播放功能"
+    task: "点击首页的一个视频内容，等待视频播放"
+    success_criteria: "视频已开始播放，可以看到播放进度或播放按钮"
+    enabled: true
+    timeout: 30

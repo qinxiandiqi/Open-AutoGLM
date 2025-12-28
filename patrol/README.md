@@ -24,9 +24,12 @@ patrol --list-examples
 ### 2. 执行巡查
 
 ```bash
-# 使用项目提供的配置
+# 手动任务配置
 patrol --config patrol/configs/wechat_patrol.yaml
 patrol --config patrol/configs/jinritoutiao_patrol.yaml
+
+# 自动巡查配置（自动探索应用所有页面）
+patrol --config patrol/configs/jinritoutiao_auto_patrol.yaml
 
 # 使用自定义配置
 patrol --config /path/to/my_patrol.yaml
@@ -188,6 +191,56 @@ tasks:
 | enabled | boolean | ❌ | true | 是否启用任务 |
 | timeout | int | ❌ | 30 | 超时时间（秒） |
 | additional_validations | array | ❌ | [] | 附加验证规则 |
+
+#### auto_patrol 配置（自动巡查）
+
+auto_patrol 是一个强大的功能,可以自动探索应用的所有页面并测试核心功能。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| enabled | boolean | false | 是否启用自动巡查 |
+| target_app | string | null | 目标应用名或包名 |
+| max_pages | int | 20 | 最多探索的页面数 |
+| max_depth | int | 3 | 最大导航深度（3级=主页→子页→子子页） |
+| max_time | int | 300 | 最大探索时间（秒） |
+| forbidden_actions | array | ["删除","支付",...] | 禁止执行的操作列表 |
+| test_actions | array | ["向下滚动",...] | 每个页面的测试动作 |
+| explore_strategy | string | breadth_first | 探索策略（breadth_first/depth_first） |
+| save_discovered_pages | boolean | true | 是否保存发现的页面列表 |
+| screenshot_each_page | boolean | false | 是否对每个页面截图 |
+
+**auto_patrol 示例**:
+
+```yaml
+name: "今日头条自动巡查"
+description: "自动探索并测试今日头条的所有页面"
+
+auto_patrol:
+  enabled: true
+  target_app: "今日头条"
+  max_pages: 15
+  max_depth: 2
+  max_time: 180
+  forbidden_actions:
+    - "删除"
+    - "支付"
+    - "购买"
+  test_actions:
+    - "向下滚动查看更多内容"
+    - "向上滚动返回顶部"
+  explore_strategy: "breadth_first"
+
+# 可选:在自动巡查后添加手动任务
+tasks:
+  - name: "手动验证特定功能"
+    task: "测试特定功能"
+    success_criteria: "功能正常"
+```
+
+**使用方式**:
+```bash
+patrol --config patrol/configs/jinritoutiao_auto_patrol.yaml
+```
 
 ## 使用示例
 
