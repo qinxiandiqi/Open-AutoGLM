@@ -9,6 +9,7 @@ Design Philosophy:
 - Patrol records results and generates reports
 """
 
+import signal
 import time
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,17 @@ from phone_agent.device_factory import get_device_factory
 from patrol.models import PatrolConfig, TaskConfig
 from patrol.utils.screenshot import ScreenshotManager
 from patrol.utils.logger import get_logger
+
+
+class GracefulExit:
+    """用于优雅退出的信号处理器"""
+
+    def __init__(self):
+        self.exit = False
+
+    def signal_handler(self, signum, frame):
+        """处理 SIGINT (Ctrl+C) 信号"""
+        self.exit = True
 
 
 class PatrolExecutor:
@@ -78,7 +90,101 @@ class PatrolExecutor:
             agent_config=agent_config,
         )
 
+        # 设置信号处理器（用于 Ctrl+C 优雅退出）
+        self.graceful_exit = GracefulExit()
+        signal.signal(signal.SIGINT, self.graceful_exit.signal_handler)
+
     def execute(self) -> dict[str, Any]:
+        """
+        执行巡查（路由到单次或定时巡查）
+
+        Returns:
+            巡查结果字典
+        """
+        # 检查是否启用定时巡查
+        if self.patrol_config.scheduled_patrol.enabled:
+            return self._execute_scheduled_patrol()
+        else:
+            return self._execute_single_patrol()
+
+    def _execute_scheduled_patrol(self) -> dict[str, Any]:
+        """
+        执行定时巡查（循环执行直到手动停止）
+
+        Returns:
+            最后一次巡查的结果
+        """
+        scheduled_config = self.patrol_config.scheduled_patrol
+        run_count = 0
+        all_results = []  # 保存所有巡查结果
+
+        self.logger.info(f"🔄 启动定时巡查模式")
+        self.logger.info(f"   - 成功间隔: {scheduled_config.success_interval}秒")
+        self.logger.info(f"   - 失败间隔: {scheduled_config.failure_interval}秒")
+        self.logger.info(f"   - 最大次数: {scheduled_config.max_runs or '无限次'}")
+        self.logger.info(f"   按 Ctrl+C 停止")
+
+        while not self.graceful_exit.exit:
+            # 检查是否达到最大执行次数
+            if scheduled_config.max_runs and run_count >= scheduled_config.max_runs:
+                self.logger.info(f"✅ 已达到最大执行次数 {scheduled_config.max_runs}，停止巡查")
+                break
+
+            run_count += 1
+            self.logger.info(f"\n{'='*60}")
+            self.logger.info(f"🚀 第 {run_count} 次巡查开始")
+            self.logger.info(f"{'='*60}\n")
+
+            # 重置 agent 状态，确保每次巡查都是干净的上下文
+            if run_count > 1:
+                self.reset()
+                self.logger.info("✅ Agent 状态已重置，开始新的巡查上下文\n")
+
+            # 执行单次巡查
+            result = self._execute_single_patrol()
+            all_results.append(result)
+
+            # 检查是否收到停止信号
+            if self.graceful_exit.exit:
+                self.logger.info("\n⚠️  收到停止信号,正在完成当前巡查后退出...")
+                break
+
+            # 决定下次执行时间
+            if result["passed_tasks"] == result["total_tasks"]:
+                # 巡查成功
+                interval = scheduled_config.success_interval
+                status = "✅ 成功"
+            else:
+                # 巡查失败
+                interval = scheduled_config.failure_interval
+                status = "❌ 失败"
+
+            # 打印统计信息
+            success_rate = (
+                result["passed_tasks"] / result["total_tasks"] * 100
+                if result["total_tasks"] > 0
+                else 0
+            )
+            self.logger.info(
+                f"\n{status} - 通过: {result['passed_tasks']}/{result['total_tasks']} ({success_rate:.1f}%)"
+            )
+
+            # 如果还有下次执行，等待间隔时间
+            if not self.graceful_exit.exit:
+                if scheduled_config.max_runs and run_count >= scheduled_config.max_runs:
+                    break
+
+                self.logger.info(
+                    f"⏰ 下次巡查将在 {interval} 秒后开始 (按 Ctrl+C 停止)"
+                )
+
+                # 分段等待，以便及时响应停止信号
+                self._wait_with_interrupt_check(interval)
+
+        # 生成汇总报告
+        return self._generate_scheduled_summary(all_results, run_count)
+
+    def _execute_single_patrol(self) -> dict[str, Any]:
         """
         Execute the complete patrol workflow.
 
@@ -574,3 +680,72 @@ class PatrolExecutor:
             pages.append(current_page)
 
         return pages
+
+    def _wait_with_interrupt_check(self, total_wait_time: int):
+        """
+        等待指定时间，但每秒检查是否需要中断
+
+        Args:
+            total_wait_time: 总等待时间（秒）
+        """
+        remaining = total_wait_time
+        while remaining > 0 and not self.graceful_exit.exit:
+            wait_time = min(remaining, 1)  # 每次最多等待1秒
+            time.sleep(wait_time)
+            remaining -= wait_time
+
+    def _generate_scheduled_summary(
+        self, all_results: list[dict], total_runs: int
+    ) -> dict[str, Any]:
+        """
+        生成定时巡查汇总报告
+
+        Args:
+            all_results: 所有巡查结果列表
+            total_runs: 总执行次数
+
+        Returns:
+            汇总报告
+        """
+        if not all_results:
+            return {
+                "patrol_name": self.patrol_config.name,
+                "description": self.patrol_config.description,
+                "total_runs": 0,
+                "successful_runs": 0,
+                "failed_runs": 0,
+                "start_time": datetime.now(),
+                "end_time": datetime.now(),
+            }
+
+        # 统计成功和失败次数
+        successful_runs = sum(
+            1 for r in all_results if r["passed_tasks"] == r["total_tasks"]
+        )
+        failed_runs = total_runs - successful_runs
+
+        # 使用第一次的开始时间和最后一次的结束时间
+        summary = {
+            "patrol_name": self.patrol_config.name,
+            "description": f"{self.patrol_config.description} (定时巡查汇总)",
+            "total_runs": total_runs,
+            "successful_runs": successful_runs,
+            "failed_runs": failed_runs,
+            "success_rate": (
+                successful_runs / total_runs * 100 if total_runs > 0 else 0
+            ),
+            "start_time": all_results[0]["start_time"],
+            "end_time": all_results[-1]["end_time"],
+            "total_duration": sum(r["total_duration"] for r in all_results),
+            "total_tasks": all_results[-1]["total_tasks"],  # 最后一次的任务总数
+            "passed_tasks": all_results[-1]["passed_tasks"],  # 最后一次的通过数
+            "failed_tasks": all_results[-1]["failed_tasks"],  # 最后一次的失败数
+            "last_result": all_results[-1],  # 最后一次的结果
+        }
+
+        # 如果有 auto_patrol 的探索结果，也包含进来
+        if "discovered_pages" in all_results[-1]:
+            summary["discovered_pages"] = all_results[-1]["discovered_pages"]
+            summary["exploration_summary"] = all_results[-1]["exploration_summary"]
+
+        return summary

@@ -31,6 +31,9 @@ patrol --config patrol/configs/jinritoutiao_patrol.yaml
 # 自动巡查配置（自动探索应用所有页面）
 patrol --config patrol/configs/jinritoutiao_auto_patrol.yaml
 
+# 定时巡查配置（持续监控，按 Ctrl+C 停止）
+patrol --config patrol/configs/jinritoutiao_scheduled_patrol.yaml
+
 # 使用自定义配置
 patrol --config /path/to/my_patrol.yaml
 ```
@@ -241,6 +244,104 @@ tasks:
 ```bash
 patrol --config patrol/configs/jinritoutiao_auto_patrol.yaml
 ```
+
+#### scheduled_patrol 配置（定时巡查）
+
+scheduled_patrol 是一个持续监控功能，可以自动循环执行巡查，适用于 7x24 小时应用健康监控。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| enabled | boolean | false | 是否启用定时巡查 |
+| success_interval | int | 300 | 成功后间隔时间（秒） |
+| failure_interval | int | 300 | 失败后间隔时间（秒） |
+| max_runs | int | null | 最大执行次数（null = 无限次） |
+
+**使用场景**：
+- 7x24 小时应用健康监控
+- 长时间稳定性测试
+- CI/CD 持续集成测试
+
+**scheduled_patrol 示例**:
+
+```yaml
+name: "今日头条定时监控"
+description: "持续监控今日头条应用健康状态"
+
+# 定时巡查配置
+scheduled_patrol:
+  enabled: true
+  success_interval: 300  # 成功后5分钟再次巡查
+  failure_interval: 300  # 失败后5分钟重试
+  max_runs: null         # 无限次，直到手动停止
+
+# 自动巡查配置
+auto_patrol:
+  enabled: true
+  target_app: "今日头条"
+  max_pages: 15
+  max_depth: 2
+  max_time: 180
+  forbidden_actions:
+    - "删除"
+    - "支付"
+    - "购买"
+  test_actions:
+    - "向下滚动查看更多内容"
+    - "向上滚动返回顶部"
+  explore_strategy: "breadth_first"
+
+# 执行配置
+execution:
+  device_id: null
+  lang: "cn"
+  continue_on_error: false
+  close_app_after_patrol: true
+
+# 输出配置
+output:
+  save_screenshots: true
+  screenshot_dir: "patrol_screenshots/jinritoutiao_scheduled"
+  report_dir: "patrol_reports"
+  verbose: true
+```
+
+**使用方式**:
+```bash
+patrol --config patrol/configs/jinritoutiao_scheduled_patrol.yaml
+```
+
+**执行效果**:
+```
+🔄 启动定时巡查模式
+   - 成功间隔: 300秒
+   - 失败间隔: 300秒
+   - 最大次数: 无限次
+   按 Ctrl+C 停止
+
+============================================================
+🚀 第 1 次巡查开始
+============================================================
+
+[执行巡查...]
+
+✅ 成功 - 通过: 1/1 (100.0%)
+⏰ 下次巡查将在 300 秒后开始 (按 Ctrl+C 停止)
+
+[300秒后...]
+
+============================================================
+🚀 第 2 次巡查开始
+============================================================
+
+[用户按 Ctrl+C]
+⚠️  收到停止信号,正在完成当前巡查后退出...
+```
+
+**关键特性**：
+- ✅ 成功后定时再次巡查（默认 5 分钟）
+- ✅ 失败后无限重试直到成功（默认 5 分钟间隔）
+- ✅ 手动停止（Ctrl+C）
+- ✅ 生成汇总报告，包含总执行次数、成功率等统计信息
 
 ## 使用示例
 

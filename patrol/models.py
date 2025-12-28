@@ -146,6 +146,23 @@ class AutoPatrolConfig:
 
 
 @dataclass
+class ScheduledPatrolConfig:
+    """
+    Configuration for scheduled patrol (continuous monitoring).
+
+    Attributes:
+        enabled: Whether scheduled patrol is enabled
+        success_interval: Interval after successful patrol (seconds)
+        failure_interval: Interval after failed patrol (seconds)
+        max_runs: Maximum number of runs (None = unlimited)
+    """
+    enabled: bool = False
+    success_interval: int = 300  # 5 minutes
+    failure_interval: int = 300  # 5 minutes
+    max_runs: int | None = None  # None = unlimited
+
+
+@dataclass
 class TaskConfig:
     """
     Configuration for a single patrol task.
@@ -190,6 +207,7 @@ class PatrolConfig:
         description: Description of what this patrol checks
         tasks: List of tasks to execute
         auto_patrol: Auto patrol configuration
+        scheduled_patrol: Scheduled patrol configuration
         device_id: Device ID to use (None for auto-detection)
         lang: Language for UI messages ("cn" or "en")
         continue_on_error: Whether to continue if a task fails
@@ -206,6 +224,9 @@ class PatrolConfig:
 
     # Auto patrol configuration
     auto_patrol: AutoPatrolConfig = field(default_factory=AutoPatrolConfig)
+
+    # Scheduled patrol configuration
+    scheduled_patrol: ScheduledPatrolConfig = field(default_factory=ScheduledPatrolConfig)
 
     # Execution configuration
     device_id: str | None = None

@@ -19,6 +19,7 @@ from patrol.models import (
     ValidationType,
     AutoPatrolConfig,
     ExplorationStrategy,
+    ScheduledPatrolConfig,
 )
 
 
@@ -44,6 +45,9 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
     # 转换 auto_patrol 配置
     auto_patrol_config = yaml_to_auto_patrol_config(yaml_data)
 
+    # 转换 scheduled_patrol 配置
+    scheduled_patrol_config = yaml_to_scheduled_patrol_config(yaml_data)
+
     # 转换执行配置
     execution = yaml_data.get("execution", {})
     output = yaml_data.get("output", {})
@@ -64,7 +68,8 @@ def yaml_to_patrol_config(yaml_data: dict[str, Any]) -> PatrolConfig:
         name=yaml_data["name"],
         description=yaml_data["description"],
         tasks=tasks,
-        auto_patrol=auto_patrol_config,  # 新增
+        auto_patrol=auto_patrol_config,
+        scheduled_patrol=scheduled_patrol_config,  # 新增
         # 执行配置
         device_id=execution.get("device_id"),
         lang=execution.get("lang", "cn"),
@@ -331,4 +336,28 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
         success_criteria=success_criteria,
         timeout=auto_patrol_config.max_time,
         enabled=True,
+    )
+
+
+def yaml_to_scheduled_patrol_config(yaml_data: dict[str, Any]) -> ScheduledPatrolConfig:
+    """
+    将 YAML 数据转换为 ScheduledPatrolConfig
+
+    Args:
+        yaml_data: 解析后的 YAML 数据
+
+    Returns:
+        ScheduledPatrolConfig 对象
+    """
+    scheduled_patrol_yaml = yaml_data.get("scheduled_patrol", {})
+
+    # 如果未启用，返回默认禁用配置
+    if not scheduled_patrol_yaml.get("enabled", False):
+        return ScheduledPatrolConfig(enabled=False)
+
+    return ScheduledPatrolConfig(
+        enabled=scheduled_patrol_yaml.get("enabled", True),
+        success_interval=scheduled_patrol_yaml.get("success_interval", 300),
+        failure_interval=scheduled_patrol_yaml.get("failure_interval", 300),
+        max_runs=scheduled_patrol_yaml.get("max_runs"),
     )
