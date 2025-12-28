@@ -66,5 +66,8 @@ patrol_reports/
 call_model.py
 app_package_name.py
 
+# Claude Code
 .claude/
-.venv
+
+# User-specific patrol configs (don't commit)
+patrol/configs/mc_auto_patrol.yaml

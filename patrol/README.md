@@ -222,7 +222,7 @@ description: "自动探索并测试今日头条的所有页面"
 
 auto_patrol:
   enabled: true
-  target_app: "今日头条"
+  target_app: "今日头条"  # 使用应用名称（需要在 APP_PACKAGES 中）
   max_pages: 15
   max_depth: 2
   max_time: 180
@@ -234,6 +234,26 @@ auto_patrol:
     - "向下滚动查看更多内容"
     - "向上滚动返回顶部"
   explore_strategy: "breadth_first"
+```
+
+**使用包名启动应用**（适用于未在预设列表中的应用）:
+
+```yaml
+name: "漫想世界自动巡查"
+description: "自动探索并测试漫想世界的所有页面"
+
+auto_patrol:
+  enabled: true
+  target_app: "com.mindcomic.world.app.debug"  # 直接使用包名
+  max_pages: 15
+  max_depth: 2
+  max_time: 180
+```
+
+**说明**:
+- **应用名称**：如"今日头条"、"微信"等（需要在 `phone_agent/config/apps.py` 的 `APP_PACKAGES` 中配置）
+- **包名**：如 `com.ss.android.article.news`（支持任何已安装的应用，即使不在预设列表中）
+- 系统会自动识别 `target_app` 是应用名称还是包名，并生成相应的启动指令
 
 # 可选:在自动巡查后添加手动任务
 tasks:
@@ -244,7 +264,11 @@ tasks:
 
 **使用方式**:
 ```bash
+# 使用应用名称巡查
 patrol --config patrol/configs/jinritoutiao_auto_patrol.yaml
+
+# 使用包名巡查
+patrol --config patrol/configs/mc_auto_patrol.yaml
 ```
 
 #### scheduled_patrol 配置（定时巡查）

@@ -96,9 +96,11 @@ class PatrolExecutor:
         signal.signal(signal.SIGINT, self.graceful_exit.signal_handler)
 
         # 初始化通知管理器
-        self.notification_manager = NotificationManager(
-            patrol_config.notifications.__dict__
-        )
+        # 将 dataclass 转换为字典格式
+        notifications_dict = {
+            "lark": patrol_config.notifications.lark.__dict__,
+        }
+        self.notification_manager = NotificationManager(notifications_dict)
 
     def execute(self) -> dict[str, Any]:
         """

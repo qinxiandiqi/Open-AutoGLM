@@ -313,7 +313,28 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
         ExplorationStrategy.DEPTH_FIRST: "深度优先（完整探索一个分支后再探索下一个）"
     }
 
-    task_instruction = f"""请自主探索{auto_patrol_config.target_app}应用，执行以下任务：
+    # 判断 target_app 是应用名称还是包名
+    target = auto_patrol_config.target_app or "指定应用"
+    is_package_name = target.startswith("com.") or "." in target
+
+    # 根据类型生成不同的启动指令
+    if is_package_name:
+        launch_instruction = f"""请使用包名启动应用：{target}
+
+启动方式：使用 adb 命令或直接通过包名 {target} 启动应用。不要在应用列表中查找，直接使用包名即可。"""
+        app_identifier = target
+    else:
+        launch_instruction = f"""请打开{target}应用。
+
+如果{target}不在应用列表中，可以尝试：
+1. 在主屏幕查找{target}图标
+2. 使用应用抽屉查找
+3. 如果还是找不到，请报告无法找到该应用"""
+        app_identifier = target
+
+    task_instruction = f"""{launch_instruction}
+
+启动成功后，请自主探索应用，执行以下任务：
 
 1. 探索目标：发现应用的主要页面和功能入口（最多探索{auto_patrol_config.max_pages}个页面）
 2. 探索深度：最多进入{auto_patrol_config.max_depth}级子页面
@@ -338,7 +359,7 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
 
     return TaskConfig(
         name="自动探索应用",
-        description=f"自主探索{auto_patrol_config.target_app}的所有页面并测试核心功能",
+        description=f"自主探索 {app_identifier} 的所有页面并测试核心功能",
         task=task_instruction,
         success_criteria=success_criteria,
         timeout=auto_patrol_config.max_time,
