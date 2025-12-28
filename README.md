@@ -15,6 +15,10 @@
     <a href="https://mp.weixin.qq.com/s/wRp22dmRVF23ySEiATiWIQ" target="_blank">AutoGLM 实战派</a> 开发者激励活动火热进行中，跑通、二创即可瓜分数万元现金奖池！成果提交 👉 <a href="https://zhipu-ai.feishu.cn/share/base/form/shrcnE3ZuPD5tlOyVJ7d5Wtir8c?from=navigation" target="_blank">入口</a>
 </p>
 
+## App自动巡查
+
+基于OpenAutoGLM二次开发的功能，可以充当24小时在线运维，自动巡查指定app的状态。具体使用方法可以参考项目中的[patrol](patrol/README.md)包。
+
 ## 懒人版快速安装
 
 你可以使用Claude Code，配置 [GLM Coding Plan](https://bigmodel.cn/glm-coding) 后，输入以下提示词，快速部署本项目。
