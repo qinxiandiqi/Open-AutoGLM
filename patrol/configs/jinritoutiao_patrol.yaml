@@ -1,0 +1,68 @@
+name: "今日头条首页巡查"
+description: "验证今日头条首页的核心功能是否正常"
+
+# 模型配置
+# 使用智谱在线模型
+model:
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
+  model_name: "autoglm-phone"
+  # api_key: "${ZHIPU_API_KEY}"  # 从环境变量读取
+
+# 执行配置
+execution:
+  device_id: null  # 自动检测
+  lang: "cn"
+  continue_on_error: false
+  close_app_after_patrol: true
+
+# 输出配置
+output:
+  save_screenshots: true
+  screenshot_dir: "patrol_screenshots/jinritoutiao"
+  report_dir: "patrol_reports"
+  verbose: true
+
+# 巡查任务
+tasks:
+  - name: "启动今日头条"
+    description: "验证今日头条可以正常启动"
+    task: "打开今日头条"
+    success_criteria: "今日头条应用已打开，显示首页界面"
+    expected_app: "com.ss.android.article.news"
+    enabled: true
+    timeout: 30
+
+  - name: "检查新闻列表"
+    description: "验证首页新闻列表是否正常显示"
+    task: "等待页面加载完成"
+    success_criteria: "首页新闻列表已正常显示，可以看到新闻标题、图片或视频等内容"
+    enabled: true
+    timeout: 15
+
+  - name: "检查推荐频道"
+    description: "验证推荐频道内容是否正常"
+    task: "向下滑动查看推荐内容"
+    success_criteria: "可以看到推荐频道的内容，包括新闻标题、图片或视频"
+    enabled: true
+    timeout: 15
+
+  - name: "检查视频内容"
+    description: "验证视频内容是否可以正常显示"
+    task: "在首页查找并点击一个视频内容"
+    success_criteria: "视频内容已打开并可以正常播放，有播放器界面或视频画面"
+    enabled: true
+    timeout: 20
+
+  - name: "检查搜索功能"
+    description: "验证搜索功能是否正常"
+    task: "点击搜索按钮"
+    success_criteria: "搜索框已打开，可以看到输入框和搜索按钮"
+    enabled: true
+    timeout: 15
+
+  - name: "检查我的页面"
+    description: "验证个人中心是否可以正常访问"
+    task: "点击底部导航栏的「我的」标签"
+    success_criteria: "个人中心页面已打开，可以看到用户信息、设置或相关功能入口"
+    enabled: true
+    timeout: 15

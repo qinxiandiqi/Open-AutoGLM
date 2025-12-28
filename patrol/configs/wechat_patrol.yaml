@@ -1,0 +1,41 @@
+name: "微信基础巡查"
+description: "验证微信核心功能是否正常"
+
+# 模型配置（可选）
+# 如果不指定，将从环境变量读取：PHONE_AGENT_BASE_URL, PHONE_AGENT_MODEL, ZHIPU_API_KEY
+# 在这里指定会覆盖环境变量（YAML 优先级最高）
+model:
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
+  model_name: "autoglm-phone"
+  # api_key: "${ZHIPU_API_KEY}"  # 可以使用环境变量引用
+
+# 执行配置
+execution:
+  device_id: null  # null = 自动检测设备
+  lang: "cn"
+  continue_on_error: false
+  close_app_after_patrol: true
+
+# 输出配置
+output:
+  save_screenshots: true
+  screenshot_dir: "patrol_screenshots/wechat"
+  report_dir: "patrol_reports"
+  verbose: true
+
+# 巡查任务
+tasks:
+  - name: "启动微信"
+    description: "验证微信可以正常启动"
+    task: "打开微信"
+    success_criteria: "微信应用已打开并显示主界面，可以看到微信图标或聊天列表"
+    expected_app: "com.tencent.mm"  # 包名
+    enabled: true
+    timeout: 30
+
+  - name: "查看消息列表"
+    description: "验证消息列表可以正常显示"
+    task: "等待页面加载完成"
+    success_criteria: "消息列表已显示，包含微信、聊天或通讯录等相关内容"
+    enabled: true
+    timeout: 10

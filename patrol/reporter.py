@@ -1,0 +1,203 @@
+"""
+Patrol report generator.
+
+This module generates inspection reports in multiple formats (Markdown, JSON).
+"""
+
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from patrol.models import PatrolConfig
+from patrol.utils.logger import get_logger
+
+
+class PatrolReporter:
+    """
+    Patrol report generator.
+
+    Generates human-readable reports in Markdown format and machine-readable
+    reports in JSON format.
+    """
+
+    def __init__(self, patrol_config: PatrolConfig):
+        """
+        Initialize the reporter.
+
+        Args:
+            patrol_config: The patrol configuration
+        """
+        self.patrol_config = patrol_config
+        self.logger = get_logger(__name__)
+
+        # Ensure report directory exists
+        Path(patrol_config.report_dir).mkdir(parents=True, exist_ok=True)
+
+    def generate_reports(
+        self,
+        results: dict[str, Any],
+    ) -> dict[str, str]:
+        """
+        Generate all format reports.
+
+        Args:
+            results: Patrol execution results from PatrolExecutor
+
+        Returns:
+            Dictionary mapping format names to file paths
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        reports = {}
+
+        # Generate Markdown report
+        reports["markdown"] = self._generate_markdown_report(results, timestamp)
+
+        # Generate JSON report
+        reports["json"] = self._generate_json_report(results, timestamp)
+
+        return reports
+
+    def _generate_markdown_report(
+        self,
+        results: dict[str, Any],
+        timestamp: str,
+    ) -> str:
+        """
+        Generate Markdown format report.
+
+        Args:
+            results: Patrol execution results
+            timestamp: Timestamp for filename
+
+        Returns:
+            Path to generated report file
+        """
+        report_path = (
+            Path(self.patrol_config.report_dir) / f"patrol_report_{timestamp}.md"
+        )
+
+        # Calculate success rate
+        total_tasks = results["total_tasks"]
+        passed_tasks = results["passed_tasks"]
+        success_rate = (passed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+        # Build markdown content
+        md_lines = [
+            "# 📱 App 巡查报告",
+            "",
+            "## 巡查信息",
+            "",
+            f"- **名称**: {self.patrol_config.name}",
+            f"- **描述**: {self.patrol_config.description}",
+            f"- **开始时间**: {results['start_time'].strftime('%Y-%m-%d %H:%M:%S')}",
+            f"- **结束时间**: {results['end_time'].strftime('%Y-%m-%d %H:%M:%S')}",
+            f"- **总耗时**: {results['total_duration']:.2f}秒",
+            "",
+            "## 📊 总览",
+            "",
+            "| 指标 | 数值 |",
+            "|------|------|",
+            f"| 总任务数 | {total_tasks} |",
+            f"| ✅ 通过 | {passed_tasks} |",
+            f"| ❌ 失败 | {results['failed_tasks']} |",
+            f"| 成功率 | {success_rate:.1f}% |",
+            "",
+            "## 📋 任务详情",
+            "",
+        ]
+
+        # Add task details
+        for task in results["tasks"]:
+            status_icon = "✅" if task["passed"] else "❌"
+            md_lines.extend(
+                [
+                    f"### {status_icon} {task['name']}",
+                    "",
+                    f"**描述**: {task['description']}",
+                    f"**状态**: {'通过' if task['passed'] else '失败'}",
+                    f"**耗时**: {task['duration']:.2f}秒",
+                    "",
+                ]
+            )
+
+            # Add agent result if available
+            if "agent_result" in task and task["agent_result"]:
+                md_lines.extend([
+                    "#### 执行结果",
+                    "",
+                    f"``",
+                    f"{task['agent_result'][:200]}...",
+                    f"```",
+                    "",
+                ])
+
+            # Add screenshot if available
+            if "screenshot" in task:
+                md_lines.extend([
+                    f"📸 **截图**: {task['screenshot']}",
+                    "",
+                ])
+
+            # Add additional validation results
+            if task.get("additional_validations"):
+                md_lines.extend(["", "#### 附加验证结果", ""])
+                for val in task["additional_validations"]:
+                    val_icon = "✅" if val["passed"] else "❌"
+                    md_lines.append(f"- {val_icon} **{val['name']}**: {val.get('message', '')}")
+
+            # Add error if any
+            if task.get("error"):
+                md_lines.extend(["", "#### ❌ 错误", "", f"```", task["error"], f"```"])
+
+            md_lines.extend(["", "---", ""])
+
+        # Write to file
+        md_content = "\n".join(md_lines)
+        report_path.write_text(md_content, encoding="utf-8")
+        self.logger.info(f"Markdown 报告已保存: {report_path}")
+
+        return str(report_path)
+
+    def _generate_json_report(
+        self,
+        results: dict[str, Any],
+        timestamp: str,
+    ) -> str:
+        """
+        Generate JSON format report.
+
+        Args:
+            results: Patrol execution results
+            timestamp: Timestamp for filename
+
+        Returns:
+            Path to generated report file
+        """
+        report_path = (
+            Path(self.patrol_config.report_dir) / f"patrol_report_{timestamp}.json"
+        )
+
+        # Convert datetime objects to strings
+        def json_serializer(obj: Any) -> str:
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            raise TypeError(f"Type {type(obj)} not serializable")
+
+        # Build report data
+        report_data = {
+            "patrol_name": self.patrol_config.name,
+            "description": self.patrol_config.description,
+            "timestamp": timestamp,
+            "results": results,
+        }
+
+        # Write to file
+        report_path.write_text(
+            json.dumps(report_data, ensure_ascii=False, indent=2, default=json_serializer),
+            encoding="utf-8",
+        )
+        self.logger.info(f"JSON 报告已保存: {report_path}")
+
+        return str(report_path)
