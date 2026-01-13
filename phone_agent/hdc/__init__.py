@@ -15,6 +15,7 @@ from phone_agent.hdc.device import (
     get_current_app,
     home,
     launch_app,
+    launch_app_by_package,
     long_press,
     swipe,
     tap,
@@ -45,6 +46,7 @@ __all__ = [
     "double_tap",
     "long_press",
     "launch_app",
+    "launch_app_by_package",
     # Connection management
     "HDCConnection",
     "DeviceInfo",

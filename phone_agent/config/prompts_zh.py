@@ -21,9 +21,13 @@ SYSTEM_PROMPT = (
 - {action} 是本次执行的具体操作指令，必须严格遵循下方定义的指令格式。
 
 操作指令及其作用如下：
-- do(action="Launch", app="xxx")  
-    Launch是启动目标app的操作，这比通过主屏幕导航更快。此操作完成后，您将自动收到结果状态的截图。
-- do(action="Tap", element=[x,y])  
+- do(action="Launch", app="xxx")
+    Launch是启动目标app的操作，使用应用显示名称（如"微信"、"今日头条"）。此操作完成后，您将自动收到结果状态的截图。
+- do(action="Launch_By_Package", package="xxx")
+    Launch_By_Package是使用包名启动应用的操作（如"com.tencent.mm"、"com.ss.android.article.news"）。当需要通过包名直接启动应用时使用此操作。此操作完成后，您将自动收到结果状态的截图。
+- do(action="Force_Stop_App", package="xxx")
+    Force_Stop_App是强制停止应用的操作，使用包名指定要停止的应用（如"com.tencent.mm"）。相当于执行 am force-stop 命令完全终止应用进程。此操作完成后，您将自动收到结果状态的截图。
+- do(action="Tap", element=[x,y])
     Tap是点击操作，点击屏幕上的特定点。可用此操作点击按钮、选择项目、从主屏幕打开应用程序，或与任何可点击的用户界面元素进行交互。坐标系统从左上角 (0,0) 开始到右下角（999,999)结束。此操作完成后，您将自动收到结果状态的截图。
 - do(action="Tap", element=[x,y], message="重要操作")  
     基本功能同Tap，点击涉及财产、支付、隐私等敏感按钮时触发。

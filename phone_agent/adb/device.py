@@ -233,10 +233,10 @@ def launch_app(
     app_name: str, device_id: str | None = None, delay: float | None = None
 ) -> bool:
     """
-    Launch an app by name.
+    Launch an app by its display name.
 
     Args:
-        app_name: The app name (must be in APP_PACKAGES).
+        app_name: The app display name (must be in APP_PACKAGES, e.g., "今日头条").
         device_id: Optional ADB device ID.
         delay: Delay in seconds after launching. If None, uses configured default.
 
@@ -259,6 +259,42 @@ def launch_app(
             "monkey",
             "-p",
             package,
+            "-c",
+            "android.intent.category.LAUNCHER",
+            "1",
+        ],
+        capture_output=True,
+    )
+    time.sleep(delay)
+    return True
+
+
+def launch_app_by_package(
+    package_name: str, device_id: str | None = None, delay: float | None = None
+) -> bool:
+    """
+    Launch an app by its package name.
+
+    Args:
+        package_name: The package name (e.g., "com.ss.android.article.news").
+        device_id: Optional ADB device ID.
+        delay: Delay in seconds after launching. If None, uses configured default.
+
+    Returns:
+        True if app was launched.
+    """
+    if delay is None:
+        delay = TIMING_CONFIG.device.default_launch_delay
+
+    adb_prefix = _get_adb_prefix(device_id)
+
+    subprocess.run(
+        adb_prefix
+        + [
+            "shell",
+            "monkey",
+            "-p",
+            package_name,
             "-c",
             "android.intent.category.LAUNCHER",
             "1",

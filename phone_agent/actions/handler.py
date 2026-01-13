@@ -91,6 +91,8 @@ class ActionHandler:
         """Get the handler method for an action."""
         handlers = {
             "Launch": self._handle_launch,
+            "Launch_By_Package": self._handle_launch_by_package,
+            "Force_Stop_App": self._handle_force_stop_app,
             "Tap": self._handle_tap,
             "Type": self._handle_type,
             "Type_Name": self._handle_type,
@@ -126,6 +128,28 @@ class ActionHandler:
         if success:
             return ActionResult(True, False)
         return ActionResult(False, False, f"App not found: {app_name}")
+
+    def _handle_launch_by_package(self, action: dict, width: int, height: int) -> ActionResult:
+        """Handle app launch by package name action."""
+        package_name = action.get("package")
+        if not package_name:
+            return ActionResult(False, False, "No package name specified")
+
+        device_factory = get_device_factory()
+        success = device_factory.launch_app_by_package(package_name, self.device_id)
+        if success:
+            return ActionResult(True, False)
+        return ActionResult(False, False, f"Failed to launch package: {package_name}")
+
+    def _handle_force_stop_app(self, action: dict, width: int, height: int) -> ActionResult:
+        """Handle force stop app action."""
+        package_name = action.get("package")
+        if not package_name:
+            return ActionResult(False, False, "No package name specified")
+
+        device_factory = get_device_factory()
+        device_factory.force_stop_app(package_name, self.device_id)
+        return ActionResult(True, False)
 
     def _handle_tap(self, action: dict, width: int, height: int) -> ActionResult:
         """Handle tap action."""

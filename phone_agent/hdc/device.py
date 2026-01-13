@@ -281,10 +281,10 @@ def launch_app(
     app_name: str, device_id: str | None = None, delay: float | None = None
 ) -> bool:
     """
-    Launch an app by name.
+    Launch an app by its display name.
 
     Args:
-        app_name: The app name (must be in APP_PACKAGES).
+        app_name: The app display name (must be in APP_PACKAGES, e.g., "今日头条").
         device_id: Optional HDC device ID.
         delay: Delay in seconds after launching. If None, uses configured default.
 
@@ -316,6 +316,48 @@ def launch_app(
             "start",
             "-b",
             bundle,
+            "-a",
+            ability,
+        ],
+        capture_output=True,
+    )
+    time.sleep(delay)
+    return True
+
+
+def launch_app_by_package(
+    bundle_name: str, device_id: str | None = None, delay: float | None = None
+) -> bool:
+    """
+    Launch an app by its bundle name.
+
+    Args:
+        bundle_name: The bundle name (e.g., "com.ss.iphone.article.News").
+        device_id: Optional HDC device ID.
+        delay: Delay in seconds after launching. If None, uses configured default.
+
+    Returns:
+        True if app was launched.
+    """
+    if delay is None:
+        delay = TIMING_CONFIG.device.default_launch_delay
+
+    hdc_prefix = _get_hdc_prefix(device_id)
+
+    # Get the ability name for this bundle
+    # Default to "EntryAbility" if not specified in APP_ABILITIES
+    ability = APP_ABILITIES.get(bundle_name, "EntryAbility")
+
+    # HarmonyOS uses 'aa start' command to launch apps
+    # Format: aa start -b {bundle} -a {ability}
+    _run_hdc_command(
+        hdc_prefix
+        + [
+            "shell",
+            "aa",
+            "start",
+            "-b",
+            bundle_name,
             "-a",
             ability,
         ],

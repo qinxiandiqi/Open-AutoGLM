@@ -52,10 +52,22 @@ Your output should STRICTLY follow the format:
   do(action="Long Press", element=[x,y])
   </answer>
 - **Launch**
-  Launch an app. Try to use launch action when you need to launch an app. Check the instruction to choose the right app before you use this action.
+  Launch an app by display name. Try to use launch action when you need to launch an app.
   **Example**:
   <answer>
   do(action="Launch", app="Settings")
+  </answer>
+- **Launch_By_Package**
+  Launch an app by package name. This provides a more precise way to launch apps.
+  **Example**:
+  <answer>
+  do(action="Launch_By_Package", package="com.example.app")
+  </answer>
+- **Force_Stop_App**
+  Force stop an app by package name. This completely terminates the app process.
+  **Example**:
+  <answer>
+  do(action="Force_Stop_App", package="com.example.app")
   </answer>
 - **Back**
   Press the Back button to navigate to the previous screen.

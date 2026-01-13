@@ -108,8 +108,14 @@ class DeviceFactory:
     def launch_app(
         self, app_name: str, device_id: str | None = None, delay: float | None = None
     ) -> bool:
-        """Launch an app."""
+        """Launch an app by display name."""
         return self.module.launch_app(app_name, device_id, delay)
+
+    def launch_app_by_package(
+        self, package_name: str, device_id: str | None = None, delay: float | None = None
+    ) -> bool:
+        """Launch an app by package name."""
+        return self.module.launch_app_by_package(package_name, device_id, delay)
 
     def type_text(self, text: str, device_id: str | None = None):
         """Type text."""
