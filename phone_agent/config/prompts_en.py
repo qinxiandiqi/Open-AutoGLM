@@ -83,6 +83,10 @@ Your output should STRICTLY follow the format:
   </answer>
 
 
+
+**Best Practices**:
+- When launching apps, use **Launch_By_Package** if you have the package name, as it's more precise and reliable. Use **Launch** for display names only.
+
 REMEMBER:
 - Think before you act: Always analyze the current UI and the best course of action before executing any step, and output in <think> part.
 - Only ONE LINE of action in <answer> part per response: Each step must contain exactly one line of executable code.
