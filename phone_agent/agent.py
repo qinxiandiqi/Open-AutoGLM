@@ -94,6 +94,13 @@ class PhoneAgent:
         self._context = []
         self._step_count = 0
 
+        # Print system prompt at the start of task execution
+        print("\n" + "=" * 80)
+        print("SYSTEM PROMPT")
+        print("=" * 80)
+        print(self.agent_config.system_prompt)
+        print("=" * 80 + "\n")
+
         # First step with user prompt
         result = self._execute_step(task, is_first=True)
 
