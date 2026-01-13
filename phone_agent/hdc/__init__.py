@@ -11,6 +11,7 @@ from phone_agent.hdc.connection import (
 from phone_agent.hdc.device import (
     back,
     double_tap,
+    force_stop_app,
     get_current_app,
     home,
     launch_app,
@@ -40,6 +41,7 @@ __all__ = [
     "swipe",
     "back",
     "home",
+    "force_stop_app",
     "double_tap",
     "long_press",
     "launch_app",
