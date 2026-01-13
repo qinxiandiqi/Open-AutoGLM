@@ -10,7 +10,10 @@ model:
 # 自动巡查配置
 auto_patrol:
   enabled: true
-  target_app: "今日头条"
+  # 新格式：分别指定应用名称和包名
+  target_app_name: "今日头条"
+  target_app_package: "com.ss.android.article.news"
+  # 旧格式仍支持（向后兼容）：target_app: "今日头条"
 
   # 探索限制
   max_pages: 15

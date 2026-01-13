@@ -277,9 +277,33 @@ def yaml_to_auto_patrol_config(yaml_data: dict[str, Any]) -> AutoPatrolConfig:
     except ValueError:
         raise ValueError(f"不支持的探索策略: {strategy_str}")
 
+    # 处理 target_app 相关配置（支持新旧格式）
+    # 优先使用新格式：target_app_name 和 target_app_package
+    target_app_name = auto_patrol_yaml.get("target_app_name")
+    target_app_package = auto_patrol_yaml.get("target_app_package")
+
+    # 如果新格式未提供，尝试使用旧格式 target_app（向后兼容）
+    if not target_app_name and not target_app_package:
+        target_app = auto_patrol_yaml.get("target_app")
+        if target_app:
+            # 判断是包名还是应用名
+            if target_app.startswith("com.") or "." in target_app:
+                # 是包名
+                target_app_package = target_app
+                # 尝试从包名反查应用名
+                from phone_agent.config.apps import get_app_name
+                target_app_name = get_app_name(target_app) or target_app
+            else:
+                # 是应用名
+                target_app_name = target_app
+                # 从应用名查找包名
+                from phone_agent.config.apps import get_package_name
+                target_app_package = get_package_name(target_app)
+
     return AutoPatrolConfig(
         enabled=auto_patrol_yaml.get("enabled", True),
-        target_app=auto_patrol_yaml.get("target_app"),
+        target_app_name=target_app_name,
+        target_app_package=target_app_package,
         max_pages=auto_patrol_yaml.get("max_pages", 20),
         max_depth=auto_patrol_yaml.get("max_depth", 3),
         max_time=auto_patrol_yaml.get("max_time", 300),
@@ -313,33 +337,22 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
         ExplorationStrategy.DEPTH_FIRST: "深度优先（完整探索一个分支后再探索下一个）"
     }
 
-    # 判断 target_app 是应用名称还是包名
-    target = auto_patrol_config.target_app or "指定应用"
-    is_package_name = target.startswith("com.") or "." in target
+    # 使用分离后的属性
+    app_name = auto_patrol_config.target_app_name or "指定应用"
+    app_package = auto_patrol_config.target_app_package
 
-    # 计算包名用于关闭应用
-    from phone_agent.config.apps import get_package_name
-    expected_app = None
-    if is_package_name:
-        expected_app = target  # 已经是包名，直接使用
+    # 生成启动指令
+    if app_package:
+        launch_instruction = f"""请使用包名启动应用：{app_package}
+
+启动方式：使用 adb 命令或直接通过包名 {app_package} 启动应用。不要在应用列表中查找，直接使用包名即可。"""
     else:
-        # 从 APP_PACKAGES 查找包名
-        expected_app = get_package_name(target)
+        launch_instruction = f"""请打开{app_name}应用。
 
-    # 根据类型生成不同的启动指令
-    if is_package_name:
-        launch_instruction = f"""请使用包名启动应用：{target}
-
-启动方式：使用 adb 命令或直接通过包名 {target} 启动应用。不要在应用列表中查找，直接使用包名即可。"""
-        app_identifier = target
-    else:
-        launch_instruction = f"""请打开{target}应用。
-
-如果{target}不在应用列表中，可以尝试：
-1. 在主屏幕查找{target}图标
+如果{app_name}不在应用列表中，可以尝试：
+1. 在主屏幕查找{app_name}图标
 2. 使用应用抽屉查找
 3. 如果还是找不到，请报告无法找到该应用"""
-        app_identifier = target
 
     task_instruction = f"""{launch_instruction}
 
@@ -367,12 +380,15 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
 2. 每个页面的测试结果（通过/失败）
 3. 发现的问题（如果有）"""
 
+    # 用于描述的应用标识符
+    app_identifier = app_name if app_name else app_package
+
     return TaskConfig(
         name="自动探索应用",
         description=f"自主探索 {app_identifier} 的所有页面并测试核心功能",
         task=task_instruction,
         success_criteria=success_criteria,
-        expected_app=expected_app,  # 添加包名以便在巡查结束后关闭应用
+        expected_app=app_package,  # 使用包名以便在巡查结束后关闭应用
         timeout=auto_patrol_config.max_time,
         enabled=True,
     )

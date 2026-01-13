@@ -591,19 +591,12 @@ class PatrolExecutor:
         closed_count = 0
         for package_name in apps_to_close:
             try:
-                # Get app name for logging
+                # Get app name for logging (package_name is already confirmed to be a package name)
                 app_name = None
-                if package_name in APP_PACKAGES.values():
-                    # It's a package name, find the app name
-                    for name, package in APP_PACKAGES.items():
-                        if package == package_name:
-                            app_name = name
-                            break
-                else:
-                    # It's already an app name, try to find package
-                    app_name = package_name
-                    if package_name in APP_PACKAGES:
-                        package_name = APP_PACKAGES[package_name]
+                for name, package in APP_PACKAGES.items():
+                    if package == package_name:
+                        app_name = name
+                        break
 
                 # Force stop the app (completely terminates the process)
                 device_factory.force_stop_app(package_name, device_id)

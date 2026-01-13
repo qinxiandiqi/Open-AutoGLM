@@ -108,7 +108,8 @@ class AutoPatrolConfig:
 
     Attributes:
         enabled: Whether auto patrol is enabled
-        target_app: Target app name or package name
+        target_app_name: Target app display name (e.g., "今日头条")
+        target_app_package: Target app package name (e.g., "com.ss.android.article.news")
         max_pages: Maximum number of pages to explore
         max_depth: Maximum navigation depth (0 = current page only)
         max_time: Maximum exploration time in seconds
@@ -119,7 +120,8 @@ class AutoPatrolConfig:
         screenshot_each_page: Whether to screenshot each page
     """
     enabled: bool = False
-    target_app: str | None = None
+    target_app_name: str | None = None  # 应用显示名称
+    target_app_package: str | None = None  # 应用包名
 
     # Exploration limits
     max_pages: int = 20
