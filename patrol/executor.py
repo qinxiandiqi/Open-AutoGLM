@@ -563,6 +563,8 @@ class PatrolExecutor:
         1. Apps don't consume resources in the background
         2. Each patrol starts from a clean state
         3. App state doesn't affect subsequent patrols
+
+        Now uses force-stop to completely terminate app processes.
         """
         from phone_agent.config.apps import APP_PACKAGES
 
@@ -585,37 +587,39 @@ class PatrolExecutor:
                 if hasattr(validation, 'expected_app') and validation.expected_app:
                     apps_to_close.add(validation.expected_app)
 
-        # Close each app
+        # Force stop each app
         closed_count = 0
-        for app_ref in apps_to_close:
+        for package_name in apps_to_close:
             try:
-                # Convert package name to app name if needed
+                # Get app name for logging
                 app_name = None
-                if app_ref in APP_PACKAGES.values():
+                if package_name in APP_PACKAGES.values():
                     # It's a package name, find the app name
                     for name, package in APP_PACKAGES.items():
-                        if package == app_ref:
+                        if package == package_name:
                             app_name = name
                             break
                 else:
-                    # It's already an app name
-                    app_name = app_ref
+                    # It's already an app name, try to find package
+                    app_name = package_name
+                    if package_name in APP_PACKAGES:
+                        package_name = APP_PACKAGES[package_name]
+
+                # Force stop the app (completely terminates the process)
+                device_factory.force_stop_app(package_name, device_id)
 
                 if app_name:
-                    # Go to home screen first
-                    device_factory.home(device_id)
-                    time.sleep(0.5)
+                    self.logger.info(f"  已强制停止 {app_name} ({package_name})")
+                else:
+                    self.logger.info(f"  已强制停止 {package_name}")
 
-                    # Close the app by swiping it away from recent apps
-                    # For now, just going to home is sufficient to stop the app
-                    self.logger.info(f"  已返回主屏幕（关闭 {app_name}）")
-                    closed_count += 1
+                closed_count += 1
 
             except Exception as e:
-                self.logger.warning(f"  关闭应用 {app_ref} 失败: {e}")
+                self.logger.warning(f"  强制停止应用 {package_name} 失败: {e}")
 
         if closed_count > 0:
-            self.logger.info(f"✅ 已清理 {closed_count} 个应用")
+            self.logger.info(f"✅ 已清理 {closed_count} 个应用（强制停止）")
         else:
             self.logger.info("✅ 无需清理应用")
 

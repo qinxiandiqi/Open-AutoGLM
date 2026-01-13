@@ -205,6 +205,30 @@ def home(device_id: str | None = None, delay: float | None = None) -> None:
     time.sleep(delay)
 
 
+def force_stop_app(package_name: str, device_id: str | None = None, delay: float | None = None) -> None:
+    """
+    Force stop an app by package name.
+
+    This completely stops the app process, unlike home() which just moves it to background.
+
+    Args:
+        package_name: The Android package name (e.g., "com.tencent.mm").
+        device_id: Optional ADB device ID.
+        delay: Delay in seconds after stopping. If None, uses configured default.
+    """
+    if delay is None:
+        delay = TIMING_CONFIG.device.default_home_delay
+
+    adb_prefix = _get_adb_prefix(device_id)
+
+    # Force stop the app using adb command
+    subprocess.run(
+        adb_prefix + ["shell", "am", "force-stop", package_name],
+        capture_output=True
+    )
+    time.sleep(delay)
+
+
 def launch_app(
     app_name: str, device_id: str | None = None, delay: float | None = None
 ) -> bool:

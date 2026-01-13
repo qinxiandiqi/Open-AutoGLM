@@ -317,6 +317,15 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
     target = auto_patrol_config.target_app or "指定应用"
     is_package_name = target.startswith("com.") or "." in target
 
+    # 计算包名用于关闭应用
+    from phone_agent.config.apps import get_package_name
+    expected_app = None
+    if is_package_name:
+        expected_app = target  # 已经是包名，直接使用
+    else:
+        # 从 APP_PACKAGES 查找包名
+        expected_app = get_package_name(target)
+
     # 根据类型生成不同的启动指令
     if is_package_name:
         launch_instruction = f"""请使用包名启动应用：{target}
@@ -338,7 +347,8 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
 
 1. 探索目标：发现应用的主要页面和功能入口（最多探索{auto_patrol_config.max_pages}个页面）
 2. 探索深度：最多进入{auto_patrol_config.max_depth}级子页面
-3. 安全约束：严禁执行以下操作：{', '.join(auto_patrol_config.forbidden_actions)}
+3. 安全约束：严禁执行以下操作：
+{chr(10).join(f'   - {action}' for action in auto_patrol_config.forbidden_actions)}
 4. 测试要求：在每个发现的页面测试以下功能：
 {chr(10).join(f'   - {action}' for action in auto_patrol_config.test_actions)}
 5. 探索策略：采用{strategy_text[auto_patrol_config.explore_strategy]}策略
@@ -362,6 +372,7 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
         description=f"自主探索 {app_identifier} 的所有页面并测试核心功能",
         task=task_instruction,
         success_criteria=success_criteria,
+        expected_app=expected_app,  # 添加包名以便在巡查结束后关闭应用
         timeout=auto_patrol_config.max_time,
         enabled=True,
     )

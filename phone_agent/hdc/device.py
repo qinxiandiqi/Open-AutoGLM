@@ -252,6 +252,31 @@ def home(device_id: str | None = None, delay: float | None = None) -> None:
     time.sleep(delay)
 
 
+def force_stop_app(package_name: str, device_id: str | None = None, delay: float | None = None) -> None:
+    """
+    Force stop an app by package name.
+
+    This completely stops the app process, unlike home() which just moves it to background.
+
+    Args:
+        package_name: The HarmonyOS package name (e.g., "com.tencent.wechat").
+        device_id: Optional HDC device ID.
+        delay: Delay in seconds after stopping. If None, uses configured default.
+    """
+    if delay is None:
+        delay = TIMING_CONFIG.device.default_home_delay
+
+    hdc_prefix = _get_hdc_prefix(device_id)
+
+    # Force stop the app using hdc command
+    # Note: HarmonyOS uses aa force-stop instead of am force-stop
+    _run_hdc_command(
+        hdc_prefix + ["shell", "aa", "force-stop", package_name],
+        capture_output=True
+    )
+    time.sleep(delay)
+
+
 def launch_app(
     app_name: str, device_id: str | None = None, delay: float | None = None
 ) -> bool:

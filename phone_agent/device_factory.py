@@ -99,6 +99,12 @@ class DeviceFactory:
         """Press home button."""
         return self.module.home(device_id, delay)
 
+    def force_stop_app(
+        self, package_name: str, device_id: str | None = None, delay: float | None = None
+    ):
+        """Force stop an app by package name."""
+        return self.module.force_stop_app(package_name, device_id, delay)
+
     def launch_app(
         self, app_name: str, device_id: str | None = None, delay: float | None = None
     ) -> bool:
