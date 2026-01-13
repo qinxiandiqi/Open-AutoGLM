@@ -59,10 +59,7 @@ class ScreenshotManager:
         try:
             # Get device factory and capture screenshot
             factory = get_device_factory()
-            device = factory.get_device(device_id)
-
-            # Capture screenshot
-            screenshot = device.get_screenshot()
+            screenshot = factory.get_screenshot(device_id)
 
             # Generate filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -101,8 +98,7 @@ class ScreenshotManager:
         """
         try:
             factory = get_device_factory()
-            device = factory.get_device(device_id)
-            screenshot = device.get_screenshot()
+            screenshot = factory.get_screenshot(device_id)
             return screenshot.base64_data
         except Exception:
             return None
