@@ -101,6 +101,13 @@ class PhoneAgent:
         print(self.agent_config.system_prompt)
         print("=" * 80 + "\n")
 
+        # Print task instruction
+        print("=" * 80)
+        print("TASK INSTRUCTION")
+        print("=" * 80)
+        print(task)
+        print("=" * 80 + "\n")
+
         # First step with user prompt
         result = self._execute_step(task, is_first=True)
 

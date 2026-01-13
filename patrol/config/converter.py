@@ -345,7 +345,10 @@ def _generate_exploration_task(auto_patrol_config: AutoPatrolConfig) -> TaskConf
     if app_package:
         launch_instruction = f"""请使用包名启动应用：{app_package}
 
-启动方式：使用 adb 命令或直接通过包名 {app_package} 启动应用。不要在应用列表中查找，直接使用包名即可。"""
+**重要**：必须使用 Launch_By_Package action 启动应用，格式为：
+do(action="Launch_By_Package", package="{app_package}")
+
+不要使用 Launch action 或在应用列表中查找，直接通过包名启动即可。"""
     else:
         launch_instruction = f"""请打开{app_name}应用。
 
