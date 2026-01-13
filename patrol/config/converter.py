@@ -361,14 +361,19 @@ do(action="Launch_By_Package", package="{app_package}")
 
 启动成功后，请自主探索应用，执行以下任务：
 
+【重要安全警告】
+⚠️ **在任何时候都严禁执行以下操作，点击前必须检查！**
+⚠️ 这些操作会造成数据丢失或财产损失，绝对不能执行：
+{chr(10).join(f'   ⛔ {action}' for action in auto_patrol_config.forbidden_actions)}
+⚠️ 在点击任何按钮前，先确认该操作不在上述禁止列表中！
+
+【探索任务】
 1. 探索目标：发现应用的主要页面和功能入口（最多探索{auto_patrol_config.max_pages}个页面）
 2. 探索深度：最多进入{auto_patrol_config.max_depth}级子页面
-3. 安全约束：严禁执行以下操作：
-{chr(10).join(f'   - {action}' for action in auto_patrol_config.forbidden_actions)}
-4. 测试要求：在每个发现的页面测试以下功能：
+3. 测试要求：在每个发现的页面测试以下功能：
 {chr(10).join(f'   - {action}' for action in auto_patrol_config.test_actions)}
-5. 探索策略：采用{strategy_text[auto_patrol_config.explore_strategy]}策略
-6. 时间限制：{auto_patrol_config.max_time}秒内完成探索
+4. 探索策略：采用{strategy_text[auto_patrol_config.explore_strategy]}策略
+5. 时间限制：{auto_patrol_config.max_time}秒内完成探索
 
 请开始探索，并在每完成一个页面的测试后简要报告进度。"""
 
